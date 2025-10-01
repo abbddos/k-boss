@@ -215,7 +215,7 @@ def update_user(user_id):
         current_app.logger.error(f"Error updating user {user_id}: {e}")
         return jsonify({"error": "Failed to update user", "details": str(e)}), 500
     
-    
+
 
 @users_bp.route('/<int:user_id>/password', methods = ['PUT'])
 def change_user_password(user_id):
@@ -240,6 +240,18 @@ def change_user_password(user_id):
         current_app.logger.error(f"Error changing password for user {user_id}: {e}")
         return jsonify({"error": "Failed to change password", "details": str(e)}), 500
     
+    
+    
+@users_bp.route('/<int:user_id>/status', methods = ['PATCH'])
+def toggle_user_status(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error":"User not found"}), 404
+    
+    user.isActive = not user.isActive
+    db.session.commit()
+    
+    return jsonify({"message": f"User {'activated' if user.isActive else 'deactivated'}"})
     
 @users_bp.route('/<int:user_id>', methods=['DELETE'])
 def delete_user(user_id):
@@ -281,6 +293,11 @@ def login():
     
     user = User.query.filter_by(email = email).first()
     if user and user.check_password(password):
+        
+        if not user.isActive:
+            return jsonify({"error": "Account is deactivated. Please contact administrator."}), 403
+            
+        
         access_token = create_access_token(identity = user.id)
         refresh_token = create_refresh_token(identity = user.id)
         
