@@ -1,4 +1,4 @@
-from flask import Blueprint, request, Response, jsonify, url_for, current_app, redirect 
+from flask import Blueprint, request, Response, jsonify, url_for, current_app, redirect, send_file 
 import requests
 from config import Config 
 from models.ProjectsModel import Project, ProjectDocument
@@ -209,3 +209,10 @@ def delete_project(code):
         db.session.rollback()
         current_app.logger.error(f"Error deleting project {code}: {e}")
         return jsonify({"error": "Failed to delete project", "details": str(e)}), 500
+    
+    
+
+@projects_bp.route('/documents/<int:doc_id>/download')
+def download_document(doc_id):
+    document = ProjectDocument.query.get_or_404(doc_id)
+    return send_file(document.file_path, as_attachment=True, download_name=document.original_filename)
