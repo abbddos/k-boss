@@ -14,8 +14,10 @@ init_db(app)
 jwt = JWTManager(app)
 
 from routs.users import users_bp 
+from routs.projects import projects_bp
 
 app.register_blueprint(users_bp, url_prefix = "/api/vi/users")
+app.register_blueprint(projects_bp, url_prefix = "/api/vi/projects")
 
 @app.route('/')
 def home():

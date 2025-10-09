@@ -23,6 +23,7 @@ class Config:
 
     # Upload folder for profile pictures
     UPLOAD_FOLDER = os.path.join(BASEDIR, 'static', 'profile_pics')
+    PROJECTS_UPLOAD_FOLDER = os.path.join(BASEDIR, 'uploads', 'projects')
     
     JWT_SECRET_KEY = 'your-super-secret-jwt-key'  # Use environment variable in production
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)

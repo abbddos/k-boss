@@ -16,7 +16,7 @@ from flask_jwt_extended import create_access_token, create_refresh_token, jwt_re
 users_bp = Blueprint('users_bp', __name__)
 
 
-ALLOWED_ROLES = ['admin', 'project manager', 'team member']
+ALLOWED_ROLES = ['root','admin', 'project manager', 'team member']
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 UPLOAD_FOLDER = Config.UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -125,13 +125,15 @@ def get_all_users():
     return jsonify([user.serialize() for user in users]), 200 
 
 
-@users_bp.route('/<int:user_id>', methods = ['GET'])
-def get_user_by_id(user_id):
-    user = User.query.get(user_id)
-    if user:
-        return jsonify(user.serialize()), 200
+@users_bp.route('/profile', methods = ['GET'])
+@jwt_required()
+def get_user_by_id():
+    current_user_id = get_jwt_identity()
+    user = User.query.filter_by(email = current_user_id).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
     
-    return jsonify({"error": "User not found"}), 404
+    return jsonify(user.serialize()), 200
 
 
 @users_bp.route('/<int:user_id>', methods=['PUT'])
@@ -162,6 +164,10 @@ def update_user(user_id):
             user.first_name = data['first_name']
         if 'last_name' in data:
             user.last_name = data['last_name']
+            
+        if 'job_title' in data:    # ← Check if it's 'job_title' or 'jobTitle'
+            user.job_title = data['job_title']
+            
         if 'role' in data:
             new_role = data['role']
             if new_role not in ALLOWED_ROLES:
@@ -217,9 +223,12 @@ def update_user(user_id):
     
 
 
-@users_bp.route('/<int:user_id>/password', methods = ['PUT'])
-def change_user_password(user_id):
-    user = User.query.get(user_id)
+@users_bp.route('/change_password', methods = ['PUT'])
+@jwt_required()
+def change_user_password():
+    
+    current_user_id = get_jwt_identity()
+    user = User.query.filter_by(email = current_user_id).first()
     
     data = request.get_json()
     if not user or not all(key in data for key in ['current_password', 'new_password']):
@@ -237,7 +246,7 @@ def change_user_password(user_id):
         return jsonify({"message": "Password updated successfully"}), 200
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Error changing password for user {user_id}: {e}")
+        current_app.logger.error(f"Error changing password for user {current_user_id}: {e}")
         return jsonify({"error": "Failed to change password", "details": str(e)}), 500
     
     
@@ -298,8 +307,8 @@ def login():
             return jsonify({"error": "Account is deactivated. Please contact administrator."}), 403
             
         
-        access_token = create_access_token(identity = user.id)
-        refresh_token = create_refresh_token(identity = user.id)
+        access_token = create_access_token(identity = user.email)
+        refresh_token = create_refresh_token(identity = user.email)
         
         user.last_login = datetime.datetime.now()
         db.session.commit()
